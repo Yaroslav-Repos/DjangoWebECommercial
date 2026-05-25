@@ -1,0 +1,30 @@
+<header class="site-header">
+    <div class="container header-inner">
+    <div class="brand">Rozetka-style Shop</div>
+    <nav class="main-nav">
+      <button class="catalog-toggle">Каталог</button>
+      <div class="search-wrap">
+        <form method="get" action="{% url 'search' %}">
+          <input name="q" placeholder="Пошук товарів..." value="{{ request.GET.q }}"/>
+        </form>
+      </div>
+      <a href="{% url 'cart' %}" class="cart-link">Кошик</a>
+    </nav>
+  </div>
+  <div class="catalog-drawer">
+    <ul class="catalog-tree">
+      {% for c in site_categories %}
+        <li>
+          <a href="{% url 'category' c.slug %}">{{ c.name }}</a>
+          {% if c.children.all %}
+            <ul>
+              {% for ch in c.children.all %}
+                <li><a href="{% url 'category' ch.slug %}">{{ ch.name }}</a></li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</header>

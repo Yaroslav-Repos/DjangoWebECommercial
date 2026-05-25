@@ -1,0 +1,85 @@
+{% extends "app/layout.html" %}
+
+{% block content %}
+{% load shop_tags %}
+<div class="breadcrumb-row">
+  <div class="container">{% for item in product|product_breadcrumb %}{% if item.type == 'category' %}<a href="{% url 'category' item.obj.slug %}">{{ item.obj.name }}</a> / {% else %}{{ item.obj.name }}{% endif %}{% endfor %}</div>
+</div>
+<div class="container grid">
+  <aside>
+    <!-- category tree -->
+  </aside>
+  <main>
+      <div class="product-card">
+
+          <div class="product-image"
+               style="width:350px;height:350px;display:flex;justify-content:center;align-items:center;overflow:hidden;">
+
+              {% if product.image %}
+
+              <img loading="lazy"
+                   src="{{ product.image.url }}"
+                   onclick="openImage(this.src)"
+                   style="max-width:100%;max-height:100%;width:auto;height:auto;display:block;cursor:pointer;object-fit:contain;">
+
+              {% else %}
+
+              <div class="img-placeholder"
+                   style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#fafafa;color:#666;">
+                  No image
+              </div>
+
+              {% endif %}
+
+          </div>
+
+
+          <div id="imageModal"
+               style="display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.9);justify-content:center;align-items:center;">
+
+              <span onclick="closeImage()"
+                    style="position:absolute;top:20px;right:35px;color:white;font-size:40px;cursor:pointer;">
+                  &times;
+              </span>
+
+              <img id="modalImg"
+                   style="max-width:90%;max-height:90%;object-fit:contain;">
+
+          </div>
+
+          <div class="product-info">
+              <h2>{{ product.name }}</h2>
+              <div class="product-meta">
+                  <div class="price">Price: {{ product.price }} USD</div>
+              </div>
+              <p>{{ product.description }}</p>
+              <form id="add-to-cart" method="post" action="{% url 'add_to_cart' %}">
+                  {% csrf_token %}
+                  {{ add_form.as_p }}
+                  <button class="btn btn-primary add-to-cart-btn">Add to cart</button>
+              </form>
+              <h4>Характеристики</h4>
+              <div class="product-specs">
+                  <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                      {% for av in attributes %}
+                      <div style="flex:1 1 200px;border:1px solid #eee;padding:6px;border-radius:4px;">{{ av.attribute.name }}: {{ av.value }}</div>
+                      {% endfor %}
+                  </div>
+              </div>
+          </div>
+      </div>
+  </main>
+</div>
+
+<script>
+    function openImage(src) {
+        document.getElementById("imageModal").style.display = "flex";
+        document.getElementById("modalImg").src = src;
+    }
+
+    function closeImage() {
+        document.getElementById("imageModal").style.display = "none";
+    }
+</script>
+
+{% endblock %}
