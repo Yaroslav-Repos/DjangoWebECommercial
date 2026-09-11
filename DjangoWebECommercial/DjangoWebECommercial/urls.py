@@ -9,8 +9,6 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth.views import LoginView, LogoutView
 from app import forms, views
-from app.views_ajax import ajax_subcategories
-from django.urls import path
 
 
 urlpatterns = [
@@ -40,7 +38,7 @@ urlpatterns = [
     path('api/admin/products/', views.admin_api_products, name='admin_api_products'),
     path('api/products/', views.api_products, name='api_products'),
     path('search/', views.search_view, name='search'),
-    path('ajax/subcategories/<slug:slug>/', ajax_subcategories, name='ajax_subcategories'),
+    path('ajax/subcategories/<slug:slug>/', views.ajax_subcategories, name='ajax_subcategories'),
 ]
 
 if settings.DEBUG:

@@ -31,21 +31,19 @@
         </div>
         {% load shop_tags %}
         {% for group in attributes %}
-          {% with attr=group.attr vals=group.values %}
-          {% with attr_key='attr_'|add:attr.id|stringformat:'s' %}
+          {% with attr_key='attr_'|add:group.id|stringformat:'s' %}
           {% with selected_vals=request|getlist:attr_key %}
           <div class="filter-group">
-            <strong>{{ attr.name }}</strong>
-              {% for val in vals %}
+            <strong>{{ group.name }}</strong>
+              {% for val in group.values %}
                 <div>
                   <label>
-                    <input type="checkbox" name="attr_{{ attr.id }}" value="{{ val }}" {% if val in selected_vals %}checked="checked"{% endif %} />
-                    {{ val }} <span class="count">({{ group.counts|dict_get:val }})</span>
+                    <input type="checkbox" name="attr_{{ group.id }}" value="{{ val.value }}" {% if val.value in selected_vals %}checked="checked"{% endif %} />
+                    {{ val.value }} <span class="count">({{ val.count }})</span>
                   </label>
                 </div>
               {% endfor %}
           </div>
-          {% endwith %}
           {% endwith %}
           {% endwith %}
         {% endfor %}
@@ -132,7 +130,7 @@
         {% endfor %}
       </div>
       {% if page.has_next %}
-        <button id="load-more" data-next-page="{{ page.next_page_number }}" style="display:none;">Load more</button>
+        <button id="load-more" data-next-page="{{ page.next_page_number }}">Load more</button>
       {% endif %}
     </main>
   </div>
@@ -148,6 +146,10 @@
         loading = true;
         var next = loadMore.getAttribute('data-next-page');
         var params = new URLSearchParams(window.location.search);
+        var categoryMatch = window.location.pathname.match(/\/category\/([^\/]+)/);
+        if (categoryMatch && categoryMatch[1]) {
+          params.set('category', categoryMatch[1]);
+        }
         params.set('page', next);
         fetch('/api/products/?'+params.toString()).then(function(r){return r.json();}).then(function(data){
           var grid = document.getElementById('products-grid');
