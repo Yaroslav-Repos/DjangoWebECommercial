@@ -110,13 +110,3 @@ def test_admin_api_requires_active_token_and_all_apis_are_get_only(client, catal
     assert response.status_code == 200
     assert response.json()['products'][0]['name'] == 'Red Phone'
 
-
-@pytest.mark.django_db
-def test_ajax_subcategories_returns_children_and_product_preview(client, catalog):
-    response = client.get(reverse('ajax_subcategories', args=[catalog['root'].slug]))
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload['children'] == [{'id': catalog['phones'].pk, 'name': 'Phones', 'slug': 'phones'}]
-    preview_response = client.get(reverse('ajax_subcategories', args=[catalog['phones'].slug]))
-    assert {product['name'] for product in preview_response.json()['products']} == {'Red Phone', 'Blue Phone'}

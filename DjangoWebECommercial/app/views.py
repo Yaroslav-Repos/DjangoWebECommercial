@@ -191,14 +191,3 @@ def contact(request):
 def about(request):
     return render(request, 'app/about.html', {'title': 'About', 'message': 'Your application description page.', 'year': datetime.now().year})
 
-
-@require_GET
-def ajax_subcategories(request, slug):
-    category = get_object_or_404(Category, slug=slug)
-    return JsonResponse({'id': category.pk, 'name': category.name,
-        'children': list(category.children.values('id', 'name', 'slug')),
-        'products': [
-            {'id': product.pk, 'name': product.name, 'slug': product.slug,
-             'image': product.image.url if product.image else None, 'price': str(product.price)}
-            for product in Product.objects.filter(category=category).order_by('-created_at')[:4]
-        ]})
