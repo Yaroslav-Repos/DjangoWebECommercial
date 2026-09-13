@@ -9,8 +9,8 @@ A small server-rendered e-commerce storefront built with vanilla Django. It incl
 - Product detail pages with images and attributes
 - Cookie-backed anonymous carts
 - Atomic checkout that creates orders and order items
-- Django admin for catalog, orders, and API tokens
-- JSON endpoints for product lists and category previews
+- Django admin for catalog and orders
+- JSON endpoints for product lists and lazy-loaded menu subcategories
 - Sample catalog data command
 - Automated pytest-django coverage for core storefront behavior
 
@@ -55,10 +55,11 @@ Open <http://127.0.0.1:8000/>.
 
 ## Sample data
 
-The included seed command creates categories, products, and product attributes. It optionally downloads placeholder images, so install `requests` before running it:
+The included seed command creates an idempotent mock catalog: 4 parent categories,
+8 subcategories, and 64 products with brands, colors, warranties, prices, and top-product flags.
+It does not delete existing data.
 
 ```bash
-pip install requests
 python manage.py seed_data
 ```
 
@@ -70,7 +71,7 @@ Create an administrator account:
 python manage.py createsuperuser
 ```
 
-Then sign in at <http://127.0.0.1:8000/admin/> to manage categories, products, product attributes, orders etc.
+Then sign in at <http://127.0.0.1:8000/admin/> to manage categories, products, product attributes, and orders.
 
 ## Tests
 
@@ -80,7 +81,7 @@ The test suite uses pytest-django and an isolated test database:
 pytest
 ```
 
-It covers catalog filtering and facets, API pagination, carts, checkout, access control for the admin API, and category-preview AJAX responses.
+It covers catalog filtering and facets, API pagination, carts, checkout, product API method protection, lazy-loaded menu categories, and informational pages.
 
 ## Routes
 
@@ -93,9 +94,10 @@ It covers catalog filtering and facets, API pagination, carts, checkout, access 
 | `/cart/` | Anonymous cart |
 | `/checkout/` | Checkout |
 | `/search/?q=<query>` | Product search |
+| `/about/` | Project description |
+| `/contact/` | GitHub project link |
 | `/api/products/` | Filtered product JSON API |
-| `/api/admin/products/` | Token-protected product JSON API |
-| `/ajax/subcategories/<slug>/` | Category navigation/preview JSON |
+| `/ajax/subcategories/<slug>/` | Direct child categories for the catalog menu |
 
 ## Product API
 
@@ -111,8 +113,6 @@ It covers catalog filtering and facets, API pagination, carts, checkout, access 
 | `attr_<id>` | `attr_1=Black` | Product attribute value; may be repeated |
 | `page` | `2` | Page number |
 | `page_size` | `18` | Results per page (limited to 100) |
-
-The admin endpoint requires an active token in the `X-Admin-Token` request header.
 
 ## Project layout
 

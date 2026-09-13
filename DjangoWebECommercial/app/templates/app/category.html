@@ -1,180 +1,178 @@
 {% extends "app/layout.html" %}
+{% load shop_tags %}
 
 {% block content %}
 <div class="breadcrumb-row">
-    <div class="container">
-        <ol class="breadcrumb">
-            <li><a href="{% url 'home' %}">Home</a></li>
-            {% for b in breadcrumb %}
-                <li><a href="{% url 'category' b.slug %}">{{ b.name }}</a></li>
-            {% endfor %}
-        </ol>
-    </div>
+  <div class="container">
+    <ol class="breadcrumb">
+      <li><a href="{% url 'home' %}">Home</a></li>
+      {% for b in breadcrumb %}
+        <li><a href="{% url 'category' b.slug %}">{{ b.name }}</a></li>
+      {% endfor %}
+    </ol>
   </div>
+</div>
 
-  <div class="container grid">
-    <aside>
-      <h4>Фільтри</h4>
-      <form id="filters" method="get" action="{{ request.path }}">
-        <div class="price-filter">
-          <label>Price from <input type="number" name="min_price" value="{{ request.GET.min_price }}" step="0.01"/></label>
-          <label>to <input type="number" name="max_price" value="{{ request.GET.max_price }}" step="0.01"/></label>
-          <div>
-            <label>Sort:
-              <select name="sort">
-                <option value="">Newest</option>
-                <option value="price_asc" {% if request.GET.sort == 'price_asc' %}selected{% endif %}>Price asc</option>
-                <option value="price_desc" {% if request.GET.sort == 'price_desc' %}selected{% endif %}>Price desc</option>
-              </select>
-            </label>
-          </div>
-        </div>
-        {% load shop_tags %}
-        {% for group in attributes %}
-          {% with attr_key='attr_'|add:group.id|stringformat:'s' %}
-          {% with selected_vals=request|getlist:attr_key %}
-          <div class="filter-group">
-            <strong>{{ group.name }}</strong>
-              {% for val in group.values %}
-                <div>
-                  <label>
-                    <input type="checkbox" name="attr_{{ group.id }}" value="{{ val.value }}" {% if val.value in selected_vals %}checked="checked"{% endif %} />
-                    {{ val.value }} <span class="count">({{ val.count }})</span>
-                  </label>
-                </div>
-              {% endfor %}
-          </div>
-          {% endwith %}
-          {% endwith %}
-        {% endfor %}
-        <button type="submit" class="btn btn-default">Apply</button>
-      </form>
-      <script>
-        document.addEventListener('DOMContentLoaded', function() {
-          const form = document.getElementById('filters');
-          const productsGrid = document.getElementById('products-grid');
-
-          if (!form || !productsGrid) {
-            console.error('Form or grid not found!');
-            return;
-          }
-
-          function updateProducts() {
-            const formData = new FormData(form);
-            const params = new URLSearchParams(formData);
-
-            // Add category from URL
-            const categoryMatch = window.location.pathname.match(/\/category\/([^\/]+)/);
-            if (categoryMatch && categoryMatch[1]) {
-              params.set('category', categoryMatch[1]);
-            }
-
-            const url = '/api/products/?' + params.toString();
-
-            fetch(url)
-              .then(response => response.json())
-              .then(data => {
-                productsGrid.innerHTML = '';
-
-                if (!data.products || data.products.length === 0) {
-                  productsGrid.innerHTML = '<p>Товари не знайдені</p>';
-                  return;
-                }
-
-                data.products.forEach(product => {
-                  const card = document.createElement('div');
-                  card.className = 'product-card';
-                  card.innerHTML = `
-                    <div class="product-image">
-                      ${product.image ? `<img src="${product.image}" style="max-width:100%;max-height:100%"/>` : '<div class="img-placeholder">No image</div>'}
-                    </div>
-                    <div class="product-info">
-                      <a href="/product/${product.slug}/">${product.name}</a>
-                      <div>${product.price}</div>
-                    </div>
-                  `;
-                  productsGrid.appendChild(card);
-                });
-              })
-              .catch(err => console.error('Error:', err));
-          }
-
-          // Attach change event to all checkboxes
-          const checkboxes = form.querySelectorAll('input[type="checkbox"]');
-          checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', updateProducts);
-          });
-
-          // Also handle price and sort changes
-          form.querySelectorAll('input[type="number"], select').forEach(field => {
-            field.addEventListener('change', updateProducts);
-          });
-
-          // Handle form submission
-          form.addEventListener('submit', e => {
-            e.preventDefault();
-            updateProducts();
-          });
-        });
-      </script>
-    </aside>
-
-    <main>
-      <h2>{% if category %}{{ category.name }}{% else %}All products{% endif %}</h2>
-      <div id="products-grid" class="products-grid">
-        {% for p in products %}
-          <div class="product-card">
-            <div class="product-image">{% if p.image %}<img loading="lazy" src="{{ p.image.url }}"/>{% else %}<div class="img-placeholder">No image</div>{% endif %}</div>
-            <div class="product-info"><a href="{% url 'product' p.slug %}">{{ p.name }}</a><div>{{ p.price }}</div></div>
-          </div>
-        {% endfor %}
+<div class="container grid">
+  <aside>
+    <h4>Filters</h4>
+    <form id="filters" method="get" action="{{ request.path }}">
+      <div class="price-filter">
+        <label>Price from <input type="number" name="min_price" value="{{ request.GET.min_price }}" step="0.01"></label>
+        <label>to <input type="number" name="max_price" value="{{ request.GET.max_price }}" step="0.01"></label>
+        <label>Sort:
+          <select name="sort">
+            <option value="">Newest</option>
+            <option value="price_asc" {% if request.GET.sort == 'price_asc' %}selected{% endif %}>Price ascending</option>
+            <option value="price_desc" {% if request.GET.sort == 'price_desc' %}selected{% endif %}>Price descending</option>
+          </select>
+        </label>
       </div>
-      {% if page.has_next %}
-        <button id="load-more" data-next-page="{{ page.next_page_number }}">Load more</button>
-      {% endif %}
-    </main>
-  </div>
+      {% for group in attributes %}
+        {% with attr_key='attr_'|add:group.id|stringformat:'s' %}
+          {% with selected_vals=request|getlist:attr_key %}
+            <div class="filter-group">
+              <strong>{{ group.name }}</strong>
+              {% for val in group.values %}
+                <label>
+                  <input type="checkbox" name="attr_{{ group.id }}" value="{{ val.value }}" {% if val.value in selected_vals %}checked{% endif %}>
+                  {{ val.value }} <span class="count">({{ val.count }})</span>
+                </label>
+              {% endfor %}
+            </div>
+          {% endwith %}
+        {% endwith %}
+      {% endfor %}
+      <button type="submit" class="btn btn-default">Apply filters</button>
+    </form>
+  </aside>
 
-  {% block scripts %}
-  <script>
-    (function(){
-      var loadMore = document.getElementById('load-more');
-      if (!loadMore) return;
-      var loading = false;
-      function doLoad(){
-        if (loading) return;
-        loading = true;
-        var next = loadMore.getAttribute('data-next-page');
-        var params = new URLSearchParams(window.location.search);
-        var categoryMatch = window.location.pathname.match(/\/category\/([^\/]+)/);
-        if (categoryMatch && categoryMatch[1]) {
-          params.set('category', categoryMatch[1]);
-        }
-        params.set('page', next);
-        fetch('/api/products/?'+params.toString()).then(function(r){return r.json();}).then(function(data){
-          var grid = document.getElementById('products-grid');
-          data.products.forEach(function(p){
-            var div = document.createElement('div');
-            div.className = 'product-card';
-            div.innerHTML = '<div class="product-image">' + (p.image? '<img loading="lazy" src="'+p.image+'" style="max-width:100%;max-height:100%"/>':'') + '</div><div class="product-info"><a href="/product/'+p.slug+'/">'+p.name+'</a><div>'+p.price+'</div></div>';
-            grid.appendChild(div);
-          });
-          if (data.has_next) {
-            loadMore.setAttribute('data-next-page', parseInt(next)+1);
-            loading = false;
-          } else {
-            loadMore.style.display = 'none';
-          }
-        }).catch(function(){ loading = false; });
+  <main>
+    <h2>{% if category %}{{ category.name }}{% else %}All products{% endif %}</h2>
+    <div id="products-grid" class="products-grid">
+      {% for p in products %}
+        <div class="product-card">
+          <div class="product-image">
+            {% if p.image %}<img loading="lazy" src="{{ p.image.url }}" alt="{{ p.name }}">
+            {% else %}<div class="img-placeholder">No image</div>{% endif %}
+          </div>
+          <div class="product-info"><a href="{% url 'product' p.slug %}">{{ p.name }}</a><div>{{ p.price }}</div></div>
+        </div>
+      {% empty %}
+        <p>No products found.</p>
+      {% endfor %}
+    </div>
+    <button id="load-more" data-next-page="{% if page.has_next %}{{ page.next_page_number }}{% endif %}" {% if not page.has_next %}hidden{% endif %}>Load more</button>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var form = document.getElementById('filters');
+    var grid = document.getElementById('products-grid');
+    var loadMore = document.getElementById('load-more');
+    var loading = false;
+    var params = new URLSearchParams(window.location.search);
+
+    function setCategoryParam(searchParams) {
+      var match = window.location.pathname.match(/\/category\/([^\/]+)/);
+      if (match && match[1]) {
+        searchParams.set('category', match[1]);
       }
-      window.addEventListener('scroll', function(){
-        if (!loadMore || loadMore.style.display === 'none') return;
-        var rect = loadMore.getBoundingClientRect();
-        if (rect.top < window.innerHeight + 300) {
-          doLoad();
-        }
-      });
-    })();
-  </script>
-  {% endblock %}
+    }
+
+    function createProductCard(product) {
+      var card = document.createElement('div');
+      var image = document.createElement('div');
+      var info = document.createElement('div');
+      var link = document.createElement('a');
+      var price = document.createElement('div');
+      card.className = 'product-card';
+      image.className = 'product-image';
+      info.className = 'product-info';
+      link.href = '/product/' + encodeURIComponent(product.slug) + '/';
+      link.textContent = product.name;
+      price.textContent = product.price;
+
+      if (product.image) {
+        var imageElement = document.createElement('img');
+        imageElement.loading = 'lazy';
+        imageElement.src = product.image;
+        imageElement.alt = product.name;
+        image.appendChild(imageElement);
+      } else {
+        var placeholder = document.createElement('div');
+        placeholder.className = 'img-placeholder';
+        placeholder.textContent = 'No image';
+        image.appendChild(placeholder);
+      }
+      info.append(link, price);
+      card.append(image, info);
+      return card;
+    }
+
+    function updateLoadMore(data) {
+      loadMore.hidden = !data.has_next;
+      loadMore.disabled = false;
+      loadMore.dataset.nextPage = data.has_next ? data.page + 1 : '';
+    }
+
+    function loadProducts(reset) {
+      if (loading || (!reset && loadMore.hidden)) return;
+      loading = true;
+      loadMore.disabled = true;
+      var requestParams = new URLSearchParams(params);
+      requestParams.set('page', reset ? '1' : loadMore.dataset.nextPage);
+
+      fetch('{% url "api_products" %}?' + requestParams.toString())
+        .then(function (response) {
+          if (!response.ok) throw new Error('Could not load products.');
+          return response.json();
+        })
+        .then(function (data) {
+          if (reset) grid.replaceChildren();
+          data.products.forEach(function (product) {
+            grid.appendChild(createProductCard(product));
+          });
+          if (reset && !data.products.length) {
+            var message = document.createElement('p');
+            message.textContent = 'No products found.';
+            grid.appendChild(message);
+          }
+          updateLoadMore(data);
+        })
+        .catch(function () {
+          loadMore.disabled = false;
+        })
+        .finally(function () {
+          loading = false;
+        });
+    }
+
+    function applyFilters() {
+      params = new URLSearchParams(new FormData(form));
+      setCategoryParam(params);
+      params.delete('page');
+      var query = params.toString();
+      window.history.replaceState(null, '', window.location.pathname + (query ? '?' + query : ''));
+      loadProducts(true);
+    }
+
+    loadMore.addEventListener('click', function () { loadProducts(false); });
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      applyFilters();
+    });
+    form.querySelectorAll('input, select').forEach(function (field) {
+      field.addEventListener('change', applyFilters);
+    });
+    window.addEventListener('scroll', function () {
+      if (!loadMore.hidden && loadMore.getBoundingClientRect().top < window.innerHeight + 300) {
+        loadProducts(false);
+      }
+    });
+  }());
+</script>
 {% endblock %}

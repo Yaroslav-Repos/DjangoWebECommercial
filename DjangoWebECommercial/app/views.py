@@ -6,12 +6,12 @@ from decimal import Decimal, InvalidOperation
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, F
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from .forms import AddToCartForm, CheckoutForm
-from .models import AdminToken, AnonymousCart, CartItem, Category, Order, OrderItem, Product, ProductAttributeValue
+from .models import AnonymousCart, CartItem, Category, Order, OrderItem, Product, ProductAttributeValue
 
 DEFAULT_PAGE_SIZE = 18
 MAX_PAGE_SIZE = 100
@@ -156,20 +156,6 @@ def checkout(request):
 
 
 @require_GET
-def admin_api_products(request):
-    token = request.META.get('HTTP_X_ADMIN_TOKEN')
-    if not token:
-        return HttpResponseForbidden('Missing admin token')
-    if not AdminToken.objects.filter(token=token, is_active=True).exists():
-        return HttpResponseForbidden('Invalid admin token')
-    products = Product.objects.all()
-    query = request.GET.get('q', '').strip()
-    if query:
-        products = products.filter(name__icontains=query)
-    return JsonResponse({'products': list(products.values('id', 'name', 'price', 'category__name'))})
-
-
-@require_GET
 def api_products(request):
     products, _ = get_filtered_products(request)
     page = Paginator(products, get_page_size(request)).get_page(request.GET.get('page', 1))
@@ -178,6 +164,15 @@ def api_products(request):
          'image': product.image.url if product.image else None, 'category': product.category.name if product.category else None}
         for product in page.object_list
     ], 'has_next': page.has_next(), 'page': page.number})
+
+
+@require_GET
+def ajax_subcategories(request, slug):
+    """Return direct child categories for the progressively loaded menu."""
+    category = get_object_or_404(Category, slug=slug)
+    return JsonResponse({
+        'children': list(category.children.values('name', 'slug')),
+    })
 
 
 def search_view(request):
@@ -190,4 +185,3 @@ def contact(request):
 
 def about(request):
     return render(request, 'app/about.html', {'title': 'About', 'message': 'Your application description page.', 'year': datetime.now().year})
-

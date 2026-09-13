@@ -1,10 +1,10 @@
 from decimal import Decimal
 
 import pytest
+from django.core.management import call_command
 from django.urls import reverse
 
 from app.models import (
-    AdminToken,
     AnonymousCart,
     CartItem,
     Category,
@@ -100,13 +100,39 @@ def test_checkout_creates_order_and_clears_cart(client, catalog):
 
 
 @pytest.mark.django_db
-def test_admin_api_requires_active_token_and_all_apis_are_get_only(client, catalog):
-    assert client.get(reverse('admin_api_products')).status_code == 403
+def test_product_api_is_get_only(client, catalog):
     assert client.post(reverse('api_products')).status_code == 405
-    token = AdminToken.objects.create(name='integration test')
 
-    response = client.get(reverse('admin_api_products'), HTTP_X_ADMIN_TOKEN=token.token)
+
+@pytest.mark.django_db
+def test_menu_ajax_returns_only_direct_subcategories(client, catalog):
+    response = client.get(reverse('ajax_subcategories', args=[catalog['root'].slug]))
 
     assert response.status_code == 200
-    assert response.json()['products'][0]['name'] == 'Red Phone'
+    assert response.json() == {
+        'children': [{'name': 'Phones', 'slug': catalog['phones'].slug}],
+    }
 
+
+@pytest.mark.django_db
+def test_about_contact_and_footer_describe_current_project(client, catalog):
+    about = client.get(reverse('about'))
+    contact = client.get(reverse('contact'))
+
+    assert about.status_code == 200
+    assert 'vanilla Django' in about.content.decode()
+    assert contact.status_code == 200
+    assert 'github.com/Yaroslav-Repos/DjangoWebECommercial' in contact.content.decode()
+    assert reverse('about') in about.content.decode()
+    assert reverse('contact') in about.content.decode()
+
+
+@pytest.mark.django_db
+def test_seed_data_creates_an_idempotent_mock_catalog():
+    call_command('seed_data')
+    call_command('seed_data')
+
+    assert Category.objects.count() == 12
+    assert Product.objects.count() == 64
+    assert Product.objects.filter(is_top=True).count() == 16
+    assert ProductAttributeValue.objects.count() == 192

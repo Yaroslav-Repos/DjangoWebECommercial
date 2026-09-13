@@ -18,7 +18,11 @@
         <div class="footer-push"></div>
         <hr/>
         <footer>
-            <p>&copy; {{ year }} - My Django Application</p>
+            <p>&copy; {{ year }} - Django Web E-Commerce</p>
+            <p>
+                <a href="{% url 'about' %}">About</a>
+                · <a href="{% url 'contact' %}">Contact</a>
+            </p>
         </footer>
     </div>
 

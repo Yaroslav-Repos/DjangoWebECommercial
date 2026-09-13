@@ -1,56 +1,91 @@
+"""Create an idempotent mock catalog for local development."""
+
+from decimal import Decimal
+
 from django.core.management.base import BaseCommand
+
 from app.models import Category, Product, ProductAttribute, ProductAttributeValue
-from django.core.files.base import ContentFile
-import requests
+
+
+CATALOG = (
+    ('electronics', 'Electronics', (
+        ('smartphones', 'Smartphones', 'Phone', ('Apple', 'Samsung', 'Google', 'Xiaomi'), Decimal('299.00')),
+        ('audio', 'Audio', 'Headphones', ('Sony', 'JBL', 'Bose', 'Anker'), Decimal('59.00')),
+    )),
+    ('computers', 'Computers', (
+        ('laptops', 'Laptops', 'Laptop', ('Lenovo', 'Dell', 'Asus', 'Acer'), Decimal('549.00')),
+        ('monitors', 'Monitors', 'Monitor', ('LG', 'Samsung', 'Dell', 'AOC'), Decimal('179.00')),
+    )),
+    ('home', 'Home and Kitchen', (
+        ('coffee-machines', 'Coffee Machines', 'Coffee Machine', ('Philips', 'DeLonghi', 'Bosch', 'Krups'), Decimal('129.00')),
+        ('vacuum-cleaners', 'Vacuum Cleaners', 'Vacuum Cleaner', ('Xiaomi', 'Dyson', 'Bosch', 'Rowenta'), Decimal('99.00')),
+    )),
+    ('sports', 'Sports and Outdoors', (
+        ('bicycles', 'Bicycles', 'Bicycle', ('Trek', 'Giant', 'Merida', 'Scott'), Decimal('399.00')),
+        ('fitness', 'Fitness', 'Fitness Tracker', ('Garmin', 'Xiaomi', 'Huawei', 'Fitbit'), Decimal('49.00')),
+    )),
+)
+
+COLORS = ('Black', 'White', 'Blue', 'Silver')
+WARRANTIES = ('12 months', '24 months')
+
 
 class Command(BaseCommand):
-    help = 'Seed sample categories and products'
+    help = 'Create an idempotent mock catalog with 64 products for local development.'
 
     def handle(self, *args, **options):
-        # create categories (idempotent)
-        c_elect, _ = Category.objects.get_or_create(name='Електроніка', slug='electronics')
-        c_phone, _ = Category.objects.get_or_create(name='Телефони', slug='phones', parent=c_elect)
-        c_lap, _ = Category.objects.get_or_create(name='Ноутбуки', slug='laptops', parent=c_elect)
+        brand_attribute, _ = ProductAttribute.objects.get_or_create(name='Brand')
+        color_attribute, _ = ProductAttribute.objects.get_or_create(name='Color')
+        warranty_attribute, _ = ProductAttribute.objects.get_or_create(name='Warranty')
 
-        # attributes (idempotent)
-        attr_brand, _ = ProductAttribute.objects.get_or_create(name='Бренд')
-        attr_color, _ = ProductAttribute.objects.get_or_create(name='Колір')
+        created_products = 0
+        existing_products = 0
 
-        # sample products with placeholder images (idempotent by slug)
-        # create multiple sample products for testing
-        sample_products = [
-            ('phone-model-a', 'Phone Model A', c_phone, 'Sample phone A', 199.99),
-            ('phone-model-b', 'Phone Model B', c_phone, 'Sample phone B', 299.99),
-            ('phone-model-c', 'Phone Model C', c_phone, 'Sample phone C', 399.99),
-            ('laptop-model-a', 'Laptop Model A', c_lap, 'Sample laptop A', 699.99),
-            ('laptop-model-b', 'Laptop Model B', c_lap, 'Sample laptop B', 799.99),
-            ('laptop-model-c', 'Laptop Model C', c_lap, 'Sample laptop C', 999.99),
-        ]
-        created_items = []
-        for slug, name, cat, desc, price in sample_products:
-            p, created = Product.objects.get_or_create(slug=slug, defaults={'name': name, 'category': cat, 'description': desc, 'price': price})
-            created_items.append((p, created))
+        for parent_slug, parent_name, subcategories in CATALOG:
+            parent, _ = Category.objects.get_or_create(
+                slug=parent_slug,
+                defaults={'name': parent_name},
+            )
 
-        # fetch placeholder images and attach if product was just created or has no image
-        try:
-            r = requests.get('https://placehold.co/300')
-            if r.status_code == 200:
-                content = ContentFile(r.content)
-                for p, created in created_items:
-                    if created or not p.image:
-                        p.image.save(f'{p.slug}.png', content, save=True)
-        except Exception:
-            self.stdout.write('Could not download placeholder images; skipping images.')
+            for category_slug, category_name, product_type, brands, base_price in subcategories:
+                category, _ = Category.objects.get_or_create(
+                    slug=category_slug,
+                    defaults={'name': category_name, 'parent': parent},
+                )
 
-        # attribute values (idempotent)
-        if created_items:
-            p1, _ = created_items[0]
-            ProductAttributeValue.objects.get_or_create(product=p1, attribute=attr_brand, value='BrandA')
-            ProductAttributeValue.objects.get_or_create(product=p1, attribute=attr_color, value='Black')
+                for number in range(1, 9):
+                    brand = brands[(number - 1) % len(brands)]
+                    color = COLORS[(number - 1) % len(COLORS)]
+                    warranty = WARRANTIES[number % len(WARRANTIES)]
+                    slug = f'{category_slug}-{brand.lower()}-{number}'
+                    product, created = Product.objects.get_or_create(
+                        slug=slug,
+                        defaults={
+                            'name': f'{brand} {product_type} {number}',
+                            'category': category,
+                            'description': f'Mock {product_type.lower()} for local development and UI testing.',
+                            'price': base_price + (Decimal(number) * Decimal('25.00')),
+                            'is_top': number <= 2,
+                        },
+                    )
 
-            if len(created_items) > 1:
-                p2, _ = created_items[1]
-                ProductAttributeValue.objects.get_or_create(product=p2, attribute=attr_brand, value='BrandB')
-                ProductAttributeValue.objects.get_or_create(product=p2, attribute=attr_color, value='Gray')
+                    if created:
+                        created_products += 1
+                    else:
+                        existing_products += 1
 
-        self.stdout.write(self.style.SUCCESS('Seed data created or already present.'))
+                    for attribute, value in (
+                        (brand_attribute, brand),
+                        (color_attribute, color),
+                        (warranty_attribute, warranty),
+                    ):
+                        ProductAttributeValue.objects.get_or_create(
+                            product=product,
+                            attribute=attribute,
+                            value=value,
+                        )
+
+        self.stdout.write(self.style.SUCCESS(
+            f'Mock catalog ready: {created_products} products created, '
+            f'{existing_products} products already existed.'
+        ))
