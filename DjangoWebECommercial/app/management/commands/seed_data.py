@@ -33,7 +33,7 @@ class Command(BaseCommand):
 
         # fetch placeholder images and attach if product was just created or has no image
         try:
-            r = requests.get('https://via.placeholder.com/300')
+            r = requests.get('https://placehold.co/300')
             if r.status_code == 200:
                 content = ContentFile(r.content)
                 for p, created in created_items:
